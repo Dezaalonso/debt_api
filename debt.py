@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine, MetaData, inspect
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Configuration for multiple databases
 app.config['SQLALCHEMY_BINDS'] = {
@@ -78,7 +80,23 @@ def create_debt(user_id):
 
     return jsonify({'message': 'Debt created successfully', 'debt_id': new_debt.id}), 201
 
+@app.route('/debts/<int:user_id>', methods=['GET'])
+def get_user_debts(user_id):
+    # Check if the user exists
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Retrieve debts for the user
+    user_debts = Debt.query.filter_by(user_id=user.id).all()
+    if not user_debts:
+        return jsonify({'message': 'No debts found for this user'}), 404
+    
+    # Prepare the response with debt information
+    debt_info = [{'debt_id': debt.id, 'debt': debt.debt} for debt in user_debts]
+    return jsonify(debt_info), 200
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
-
